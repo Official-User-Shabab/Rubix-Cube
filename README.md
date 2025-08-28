@@ -2,6 +2,8 @@
 
 A Rubik's Cube simulator built with **Three.js**. Rotate, scramble and solve a virtual Rubik's Cube in your browser.
 
+Play here: https://official-user-shabab.github.io/Rubix-Cube/
+
 ---
 
 ## Features
@@ -47,7 +49,7 @@ A Rubik's Cube simulator built with **Three.js**. Rotate, scramble and solve a v
 git clone https://github.com/Official-User-Shabab/Rubix-Cube.git
 ```
 
-2. Open `main.html` in a web browser.
+2. Open `index.html` in a web browser.
 
 ---
 
@@ -60,7 +62,7 @@ git clone https://github.com/Official-User-Shabab/Rubix-Cube.git
 ## Project Structure
 
 ```
-├── main.html        # Main HTML file
+├── index.html        # Main HTML file
 ├── three.min.js      # Three.js file
 └── README.md         # README file
 ```
