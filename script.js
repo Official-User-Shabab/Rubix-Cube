@@ -1,0 +1,225 @@
+let scene, camera, renderer, cubelets = [], group;
+let isDragging = false, previousMousePosition = {x:0,y:0};
+let currentRotation = new THREE.Euler(0,0,0,'YXZ');
+let isAnimating = false, animationQueue = [], animationDuration = 250;
+let timerRunning = false, timerStart = null, timerInterval = null;
+const timerEl = document.getElementById('timerDisplay');
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1a1a);
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(6,5,9);
+  camera.lookAt(0,0,0);
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('container').appendChild(renderer.domElement);
+
+  createRubiksCube();
+
+  scene.add(new THREE.AmbientLight(0xffffff,0.5));
+  const dirLight = new THREE.DirectionalLight(0xffffff,0.5);
+  dirLight.position.set(0,10,5);
+  scene.add(dirLight);
+  document.addEventListener('mousedown', onMouseDown);
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('keydown', onKeyDown);
+  window.addEventListener('resize', onWindowResize);
+  document.getElementById('mixBtn').addEventListener('click', scrambleCube);
+  document.getElementById('solveBtn').addEventListener('click', resetCube);
+  document.getElementById('timerBtn').addEventListener('click', toggleTimer);
+  document.getElementById('resetCameraBtn').addEventListener('click', resetCamera);
+}
+
+function createRubiksCube() {
+  group = new THREE.Group();
+  scene.add(group);
+  cubelets = [];
+
+  const colors = {
+    white: 0xffffff,
+    yellow: 0xffff00,
+    green: 0x00ff00,
+    blue: 0x0000ff,
+    red: 0xff0000,
+    orange: 0xffa500,
+    black: 0x000000
+  };
+
+  const gap = 0.05, cubeletSize = 1 - gap;
+
+  for (let x = -1; x <= 1; x++) {
+    for (let y = -1; y <= 1; y++) {
+      for (let z = -1; z <= 1; z++) {
+        if (x === 0 && y === 0 && z === 0) continue;
+
+        const geom = new THREE.BoxGeometry(cubeletSize, cubeletSize, cubeletSize);
+        const mats = [
+          new THREE.MeshBasicMaterial({color: x===1 ? colors.red    : colors.black}),
+          new THREE.MeshBasicMaterial({color: x===-1 ? colors.orange: colors.black}),
+          new THREE.MeshBasicMaterial({color: y===1 ? colors.white : colors.black}),
+          new THREE.MeshBasicMaterial({color: y===-1 ? colors.yellow: colors.black}),
+          new THREE.MeshBasicMaterial({color: z===1 ? colors.blue  : colors.black}),
+          new THREE.MeshBasicMaterial({color: z===-1 ? colors.green : colors.black})
+        ];
+
+        const cube = new THREE.Mesh(geom, mats);
+        cube.position.set(x,y,z);
+        cube.originalPosition = new THREE.Vector3(x,y,z);
+
+        cubelets.push(cube);
+        group.add(cube);
+      }
+    }
+  }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+function onMouseDown(e) {
+  isDragging = true;
+  previousMousePosition = {x:e.clientX,y:e.clientY};
+}
+
+function onMouseMove(e) {
+  if (!isDragging) return;
+  const dx = e.clientX - previousMousePosition.x;
+  const dy = e.clientY - previousMousePosition.y;
+  currentRotation.y -= dx * 0.005;
+  currentRotation.x -= dy * 0.005;
+  const limit = Math.PI/2 - 0.1;
+  currentRotation.x = Math.max(-limit, Math.min(limit, currentRotation.x));
+  const r = camera.position.length();
+  camera.position.x = r * Math.sin(currentRotation.y) * Math.cos(currentRotation.x);
+  camera.position.y = r * Math.sin(currentRotation.x);
+  camera.position.z = r * Math.cos(currentRotation.y) * Math.cos(currentRotation.x);
+  camera.lookAt(0,0,0);
+  previousMousePosition = {x:e.clientX,y:e.clientY};
+}
+
+function onMouseUp() {
+  isDragging = false;
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function onKeyDown(event) {
+  if (isAnimating) { animationQueue.push(event); return; }
+  const key = event.key.toUpperCase(), shift = event.shiftKey;
+  let direction = shift ? -1 : 1;
+  let move = null;
+
+  switch (key) {
+    case 'U': move = {axis:'y',layers:[1],direction:direction}; break;
+    case 'D': move = {axis:'y',layers:[-1],direction:-direction}; break;
+    case 'R': move = {axis:'x',layers:[1],direction:direction}; break;
+    case 'L': move = {axis:'x',layers:[-1],direction:-direction}; break;
+    case 'F': move = {axis:'z',layers:[1],direction:direction}; break;
+    case 'B': move = {axis:'z',layers:[-1],direction:-direction}; break;
+    case 'M': move = {axis:'x',layers:[0],direction:-direction}; break;
+    case 'E': move = {axis:'y',layers:[0],direction:-direction}; break;
+    case 'S': move = {axis:'z',layers:[0],direction:direction}; break;
+    case 'X': move = {axis:'x',layers:'all',direction:direction}; break;
+    case 'Y': move = {axis:'y',layers:'all',direction:direction}; break;
+    case 'Z': move = {axis:'z',layers:'all',direction:direction}; break;
+  }
+  if (move) { isAnimating = true; performMove(move); }
+}
+
+// Time
+function toggleTimer() { timerRunning ? stopTimer() : startTimer(); }
+function startTimer() {
+  timerStart = performance.now();
+  timerRunning = true;
+  document.getElementById('timerBtn').textContent = 'Stop Timer';
+  timerInterval = setInterval(updateTimer, 31);
+}
+function stopTimer() {
+  timerRunning = false;
+  clearInterval(timerInterval);
+  document.getElementById('timerBtn').textContent = 'Start Timer';
+}
+function updateTimer() {
+  const elapsed = performance.now() - timerStart;
+  const ms = Math.floor(elapsed % 1000);
+  const sec = Math.floor((elapsed/1000) % 60);
+  const min = Math.floor(elapsed / 60000);
+  timerEl.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+}
+function checkSolved() {
+  return cubelets.every(c => c.position.distanceTo(c.originalPosition) < 0.01);
+}
+
+// how em cube moves
+function performMove(move) {
+  const {axis, layers, direction} = move;
+  const pivot = new THREE.Object3D();
+  scene.add(pivot);
+
+  let cubesToMove = layers === 'all' ? cubelets : cubelets.filter(c => layers.some(l => Math.round(c.position[axis]) === l));
+  cubesToMove.forEach(c => pivot.attach(c));
+
+  const targetRotation = direction * Math.PI / 2;
+  const startTime = performance.now();
+
+  function animateMove(currentTime) {
+    const progress = Math.min((currentTime - startTime) / animationDuration, 1);
+    pivot.rotation[axis] = targetRotation * progress;
+    renderer.render(scene, camera);
+    if (progress < 1) {
+      requestAnimationFrame(animateMove);
+    } else {
+      pivot.rotation[axis] = targetRotation;
+      cubesToMove.forEach(c => group.attach(c));
+      scene.remove(pivot);
+      isAnimating = false;
+      if (checkSolved() && timerRunning) stopTimer();
+      if (animationQueue.length > 0) {
+        const nextMove = animationQueue.shift();
+        onKeyDown(nextMove);
+      }
+    }
+  }
+  requestAnimationFrame(animateMove);
+}
+
+// scramble
+function scrambleCube() {
+  const moves = ['U','D','R','L','F','B','M','E','S'];
+  for (let i = 0; i < 20; i++) {
+    const move = moves[Math.floor(Math.random() * moves.length)];
+    const e = {key: move, shiftKey: Math.random() < 0.5};
+    onKeyDown(e);
+  }
+}
+
+reset
+function resetCube() {
+  cubelets.forEach(c => {
+    c.position.copy(c.originalPosition);
+    c.rotation.set(0,0,0);
+  });
+
+  if (timerRunning) stopTimer();
+
+  timerEl.textContent = "00:00.000";
+  timerStart = null;
+}
+
+// reset cam
+function resetCamera() {
+  currentRotation.set(0,0,0);
+  camera.position.set(6,5,9);
+  camera.lookAt(0,0,0);
+}
+
+//running it
+window.onload = () => { init(); animate(); }
