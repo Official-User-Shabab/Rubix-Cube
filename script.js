@@ -3,7 +3,7 @@ let isDragging = false, previousMousePosition = {x:0,y:0};
 let currentRotation = new THREE.Euler(0,0,0,'YXZ');
 let isAnimating = false, animationQueue = [], animationDuration = 250;
 let timerRunning = false, timerStart = null, timerInterval = null;
-const timerEl = document.getElementById('timerDisplay');
+let timerEl; // will assign inside init()
 
 function init() {
   scene = new THREE.Scene();
@@ -11,9 +11,12 @@ function init() {
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.set(6,5,9);
   camera.lookAt(0,0,0);
+
   renderer = new THREE.WebGLRenderer({antialias:true});
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.getElementById('container').appendChild(renderer.domElement);
+
+  timerEl = document.getElementById('timerDisplay');
 
   createRubiksCube();
 
@@ -21,11 +24,13 @@ function init() {
   const dirLight = new THREE.DirectionalLight(0xffffff,0.5);
   dirLight.position.set(0,10,5);
   scene.add(dirLight);
+
   document.addEventListener('mousedown', onMouseDown);
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
   document.addEventListener('keydown', onKeyDown);
   window.addEventListener('resize', onWindowResize);
+
   document.getElementById('mixBtn').addEventListener('click', scrambleCube);
   document.getElementById('solveBtn').addEventListener('click', resetCube);
   document.getElementById('timerBtn').addEventListener('click', toggleTimer);
@@ -134,7 +139,8 @@ function onKeyDown(event) {
   if (move) { isAnimating = true; performMove(move); }
 }
 
-// Time
+// timer stuff
+
 function toggleTimer() { timerRunning ? stopTimer() : startTimer(); }
 function startTimer() {
   timerStart = performance.now();
@@ -158,7 +164,8 @@ function checkSolved() {
   return cubelets.every(c => c.position.distanceTo(c.originalPosition) < 0.01);
 }
 
-// how em cube moves
+// moving it
+
 function performMove(move) {
   const {axis, layers, direction} = move;
   const pivot = new THREE.Object3D();
@@ -191,7 +198,8 @@ function performMove(move) {
   requestAnimationFrame(animateMove);
 }
 
-// scramble
+// scrambles
+
 function scrambleCube() {
   const moves = ['U','D','R','L','F','B','M','E','S'];
   for (let i = 0; i < 20; i++) {
@@ -201,7 +209,8 @@ function scrambleCube() {
   }
 }
 
-reset
+// reset
+
 function resetCube() {
   cubelets.forEach(c => {
     c.position.copy(c.originalPosition);
@@ -214,12 +223,15 @@ function resetCube() {
   timerStart = null;
 }
 
-// reset cam
 function resetCamera() {
   currentRotation.set(0,0,0);
   camera.position.set(6,5,9);
   camera.lookAt(0,0,0);
 }
 
-//running it
-window.onload = () => { init(); animate(); }
+// running it
+
+window.onload = () => {
+  init();
+  animate();
+};
