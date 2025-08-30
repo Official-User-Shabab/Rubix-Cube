@@ -1,0 +1,62 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1a1a, #333);
+  font-family: Inter, sans-serif;
+  color: #f0f0f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100vh;
+}
+
+#container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#instructions {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  width: 250px;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+h1, p {
+  margin: 5px 0;
+}
+
+button {
+  margin: 3px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  background: #333;
+  color: #f0f0f0;
+}
+
+button:hover {
+  background: #555;
+  box-shadow: 0 0 8px #fff;
+}
+
+#timerDisplay {
+  margin-top: 10px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+canvas {
+  display: block;
+}
